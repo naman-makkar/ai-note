@@ -16,14 +16,18 @@ import Link from 'next/link';
 
 // Helper function to get the base URL
 const getURL = () => {
+  console.log("getURL: Checking NEXT_PUBLIC_SITE_URL:", process.env.NEXT_PUBLIC_SITE_URL);
+  console.log("getURL: Checking NEXT_PUBLIC_VERCEL_URL:", process.env.NEXT_PUBLIC_VERCEL_URL);
   let url =
     process?.env?.NEXT_PUBLIC_SITE_URL ?? // Set this to your site URL in production env.
     process?.env?.NEXT_PUBLIC_VERCEL_URL ?? // Automatically set by Vercel.
     'http://localhost:3000/';
+  console.log("getURL: Initial URL based on env vars:", url); 
   // Make sure to include `https://` when not localhost.
   url = url.includes('http') ? url : `https://${url}`;
   // Make sure to include a trailing `/`.
   url = url.charAt(url.length - 1) === '/' ? url : `${url}/`;
+  console.log("getURL: Final normalized URL:", url);
   return url;
 };
 
