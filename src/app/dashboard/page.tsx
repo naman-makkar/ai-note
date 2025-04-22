@@ -13,6 +13,7 @@ import type { Note } from '@/types/database';
 import type { NoteSchema } from '@/lib/validators/notes';
 import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 import { PlusCircle } from 'lucide-react';
+import { NoteViewModal } from "@/components/notes/note-view-modal"; // Import the new modal
 
 // Define a loading state component for better UX
 const LoadingSkeleton = () => (
@@ -21,7 +22,7 @@ const LoadingSkeleton = () => (
       <Skeleton className="h-8 w-48" />
       <Skeleton className="h-10 w-36" />
     </div>
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {Array.from({ length: 6 }).map((_, index) => (
         <div key={index} className="rounded-lg border bg-card text-card-foreground shadow-sm p-6 space-y-4">
           <Skeleton className="h-6 w-3/4" />
@@ -39,10 +40,12 @@ const LoadingSkeleton = () => (
 
 export default function DashboardPage() {
   const { user, session } = useSupabase(); 
-  // const router = useRouter(); // Keep router if needed for other actions, but not for auth redirect
+  const router = useRouter(); // Keep router if needed for other actions, but not for auth redirect
   const [isNoteFormOpen, setIsNoteFormOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true); 
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewingNote, setViewingNote] = useState<Note | null>(null);
 
   const createNoteMutation = useCreateNote();
   const updateNoteMutation = useUpdateNote();
@@ -64,9 +67,23 @@ export default function DashboardPage() {
     setIsNoteFormOpen(true);
   };
 
-  const handleOpenEditNote = (note: Note) => {
-    setEditingNote(note);
-    setIsNoteFormOpen(true);
+  // Triggered when clicking the Edit button *inside* the View Modal
+  const handleOpenEditNote = (noteToEdit: Note) => {
+    setIsViewModalOpen(false); // Close view modal first
+    setViewingNote(null);
+    setEditingNote(noteToEdit); // Set note for editing
+    setIsNoteFormOpen(true);  // Open form modal
+  };
+
+  // Triggered when clicking a NoteCard
+  const handleViewNote = (noteToView: Note) => {
+    setViewingNote(noteToView);
+    setIsViewModalOpen(true);
+  };
+
+  const handleCloseViewModal = () => {
+    setIsViewModalOpen(false);
+    setViewingNote(null);
   };
 
   const handleNoteFormSubmit = (values: NoteSchema) => {
@@ -137,8 +154,19 @@ export default function DashboardPage() {
         </Dialog>
       </div>
 
-      {/* Note List Area */}
-      <NoteList onEditNote={handleOpenEditNote} />
+      {/* Note List Area - Pass handleViewNote */}
+      <NoteList onViewNote={handleViewNote} />
+
+      {/* Note View Modal - Controlled Dialog */} 
+      {viewingNote && (
+         <NoteViewModal 
+            note={viewingNote} 
+            isOpen={isViewModalOpen} 
+            onClose={handleCloseViewModal}
+            onEdit={handleOpenEditNote} // Pass function to trigger edit form
+            // We might need to pass delete trigger function too 
+         />
+      )}
 
     </div>
   );

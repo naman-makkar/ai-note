@@ -6,21 +6,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Note } from "@/types/database";
 
 interface NoteListProps {
-  onEditNote: (note: Note) => void; // Function to handle edit action
+  onViewNote: (note: Note) => void;
 }
 
-export function NoteList({ onEditNote }: NoteListProps) {
+export function NoteList({ onViewNote }: NoteListProps) {
   const { data: notes, isLoading, isError, error } = useGetNotes();
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {Array.from({ length: 8 }).map((_, index) => (
-          <div key={index} className="rounded-lg border bg-card p-6 space-y-3 animate-pulse">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className="rounded-lg border bg-card p-6 space-y-3 animate-pulse aspect-square">
              <Skeleton className="h-5 w-3/4 rounded" />
              <Skeleton className="h-4 w-full rounded" />
              <Skeleton className="h-4 w-5/6 rounded" />
-             <div className="pt-4 border-t mt-4">
+             <div className="pt-4 border-t mt-auto">
                 <Skeleton className="h-8 w-1/3 rounded" /> 
              </div>
           </div>
@@ -50,9 +50,9 @@ export function NoteList({ onEditNote }: NoteListProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {notes.map((note) => (
-        <NoteCard key={note.id} note={note} onEdit={onEditNote} />
+        <NoteCard key={note.id} note={note} onView={onViewNote} />
       ))}
     </div>
   );

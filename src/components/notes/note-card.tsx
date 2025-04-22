@@ -15,10 +15,10 @@ import { cn } from "@/lib/utils";
 
 interface NoteCardProps {
   note: Note;
-  onEdit: (note: Note) => void;
+  onView: (note: Note) => void;
 }
 
-export function NoteCard({ note, onEdit }: NoteCardProps) {
+export function NoteCard({ note, onView }: NoteCardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [currentSummary, setCurrentSummary] = useState<string | null>(note.summary ?? null);
@@ -27,7 +27,7 @@ export function NoteCard({ note, onEdit }: NoteCardProps) {
 
   const handleDelete = () => {
     deleteNoteMutation.mutate(note.id, {
-      onError: () => setShowDeleteConfirm(false),
+      onSettled: () => setShowDeleteConfirm(false),
     });
   };
 
@@ -98,15 +98,16 @@ export function NoteCard({ note, onEdit }: NoteCardProps) {
     }
   };
 
-  const handleSummarize = async () => {
+  const handleSummarize = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!note.content) {
       toast.error("Cannot summarize empty note.");
       return;
     }
 
     setIsSummarizing(true);
-    setCurrentSummary(""); // Clear summary immediately
-    let rawResponse = ''; // Accumulate raw response here
+    setCurrentSummary("");
+    let rawResponse = '';
 
     try {
       const response = await fetch('/api/summarize', {
@@ -125,39 +126,28 @@ export function NoteCard({ note, onEdit }: NoteCardProps) {
       }
 
       const reader = response.body.getReader();
-      // Ensure decoder handles potential multi-byte characters (like emojis) correctly
-      const decoder = new TextDecoder('utf-8'); 
+      const decoder = new TextDecoder('utf-8');
       let done = false;
 
-      // Read the entire stream first
       while (!done) {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
         if (value) {
-          // Decode using stream: true might help with partial multi-byte chars, but utf-8 decode usually handles it.
-          const chunkValue = decoder.decode(value, { stream: true }); 
-          console.log("Raw Stream Chunk:", chunkValue); // Log raw chunks
+          const chunkValue = decoder.decode(value, { stream: true });
+          console.log("Raw Stream Chunk:", chunkValue);
           rawResponse += chunkValue;
-          // --- CRITICAL: Do NOT update state here ---
         }
       }
-      // Ensure the decoder flushes any remaining bytes (though usually not needed if stream ends properly)
-      // const finalChunk = decoder.decode(); // Usually empty, but good practice
-      // if (finalChunk) rawResponse += finalChunk; 
-      
+
       console.log("Completed Raw Response:", rawResponse);
 
-      // Now, clean the *entire* response after the stream is finished
       const cleanedContent = extractAndCleanContent(rawResponse);
       console.log("Cleaned Content:", cleanedContent);
 
       if (cleanedContent) {
-        // Update the UI with the final cleaned content
         setCurrentSummary(cleanedContent);
-        // Save the cleaned content to the database
         updateSummaryMutation.mutate({ noteId: note.id, summary: cleanedContent });
       } else {
-        // If cleaning failed or returned empty, show info and revert summary
         toast.info("AI summary could not be processed.");
         setCurrentSummary(note.summary ?? null);
       }
@@ -165,63 +155,74 @@ export function NoteCard({ note, onEdit }: NoteCardProps) {
     } catch (error: any) {
       console.error("Summarization error:", error);
       toast.error("Failed to Summarize", { description: error.message || "An error occurred." });
-      setCurrentSummary(note.summary ?? null); // Revert on error
+      setCurrentSummary(note.summary ?? null);
     } finally {
       setIsSummarizing(false);
     }
   };
 
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowDeleteConfirm(true);
+  };
+
   return (
     <TooltipProvider delayDuration={100}>
       <>
-        <Card className={cn(
-          "flex flex-col h-full",
-          "bg-card text-card-foreground",
-          "border border-border rounded-lg shadow-sm",
-          "transition-all duration-200 ease-in-out",
-          "hover:shadow-lg hover:-translate-y-1 hover:border-primary/30"
-        )}>
-          <CardHeader className="pb-2 pt-4 px-5">
+        <Card 
+          className={cn(
+            "flex flex-col", 
+            "aspect-square", 
+            "bg-card text-card-foreground", 
+            "border border-border rounded-lg shadow-sm", 
+            "transition-all duration-200 ease-in-out", 
+            "overflow-hidden",
+            "hover:shadow-lg hover:-translate-y-1 hover:border-primary/30",
+            "cursor-pointer"
+          )}
+          onClick={() => onView(note)}
+        >
+          <CardHeader className="pb-1 pt-4 px-4 flex-shrink-0">
             <CardTitle className="text-base font-semibold leading-tight tracking-tight truncate">
               {note.title}
             </CardTitle>
           </CardHeader>
-          <CardContent className="py-3 px-5 flex-grow space-y-3">
+          <CardContent className="py-2 px-4 flex-1 space-y-2 overflow-y-hidden">
             <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap break-words">
               {note.content}
             </p>
             {(currentSummary || isSummarizing) && (
-              <div className="mt-3 pt-3 border-t border-border/60 space-y-1.5 bg-muted/40 p-3 rounded-md">
-                 <h4 className="text-xs font-semibold text-primary tracking-wide uppercase flex items-center gap-1.5">
-                   <Sparkles className="h-3.5 w-3.5"/> AI Enhancement
+              <div className="mt-2 pt-2 border-t border-border/60 space-y-1 bg-muted/40 p-2 rounded-md text-xs">
+                 <h4 className="text-xs font-semibold text-primary tracking-wide uppercase flex items-center gap-1 mb-1">
+                   <Sparkles className="h-3 w-3 flex-shrink-0"/> AI Enhancement
                  </h4>
                  {isSummarizing && !currentSummary ? (
-                    <div className="space-y-1.5 pt-1">
-                        <Skeleton className="h-3 w-3/4 rounded" />
-                        <Skeleton className="h-3 w-1/2 rounded" />
-                        <Skeleton className="h-3 w-3/5 rounded" />
+                    <div className="space-y-1 pt-0.5">
+                        <Skeleton className="h-2.5 w-3/4 rounded" />
+                        <Skeleton className="h-2.5 w-1/2 rounded" />
+                        <Skeleton className="h-2.5 w-3/5 rounded" />
                     </div>
                  ) : (
-                     <div className="text-sm text-foreground/90 whitespace-pre-wrap break-words pt-0.5">
+                     <div className="text-xs text-foreground/90 whitespace-pre-wrap break-words pt-0.5 line-clamp-6">
                         {currentSummary}
                      </div>
                  )}
               </div>
             )}
           </CardContent>
-          <CardFooter className="pt-3 pb-3 px-5 mt-auto flex justify-between items-center border-t border-border/60 bg-muted/30 rounded-b-lg">
+          <CardFooter className="pt-2 pb-1 px-4 flex justify-between items-center border-t border-border/60 bg-muted/30 rounded-b-lg flex-shrink-0">
             <span className="text-xs text-muted-foreground">
               {new Date(note.created_at).toLocaleDateString(undefined, { 
                 year: 'numeric', month: 'short', day: 'numeric' 
               })}
             </span>
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-0">
                <Tooltip>
                     <TooltipTrigger asChild>
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-primary/80 hover:bg-primary/10 hover:text-primary"
+                            className="h-7 w-7 text-primary/80 hover:bg-primary/10 hover:text-primary"
                             onClick={handleSummarize}
                             disabled={isSummarizing || updateSummaryMutation.isPending}
                         >
@@ -238,23 +239,11 @@ export function NoteCard({ note, onEdit }: NoteCardProps) {
                     </TooltipContent>
                 </Tooltip>
 
-                <Separator orientation="vertical" className="h-5 mx-1.5 bg-border"/>
+                <Separator orientation="vertical" className="h-4 mx-1 bg-border"/>
 
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-accent hover:text-accent-foreground" onClick={() => onEdit(note)}>
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Edit note</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Edit note</p>
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive/80 hover:bg-destructive/10 hover:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive/80 hover:bg-destructive/10 hover:text-destructive" onClick={handleDeleteClick}>
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Delete note</span>
                     </Button>
