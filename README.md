@@ -111,7 +111,3 @@ This application is optimized for deployment on [Vercel](https://vercel.com/).
 5.  Remember to add your Vercel deployment URL (e.g., `https://YOUR_APP_NAME.vercel.app/auth/callback`) to the list of **Authorized redirect URIs** in both your Supabase Auth settings and your Google Cloud Console OAuth settings.
 
 **Live Site:** [https://ai-note-ten.vercel.app/](https://ai-note-ten.vercel.app/)
-
-## 📄 License
-
-This project is licensed under the MIT License.
