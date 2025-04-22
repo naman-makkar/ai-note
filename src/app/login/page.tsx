@@ -59,10 +59,12 @@ export default function LoginPage() {
 
   async function handleGoogleLogin() {
     setIsGoogleLoading(true);
+    const redirectUrl = `${getURL()}auth/callback`;
+    console.log("Using redirectTo:", redirectUrl);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${getURL()}auth/callback`,
+        redirectTo: redirectUrl,
       },
     });
     if (error) {
